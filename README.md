@@ -59,7 +59,10 @@ sudo apt install python3-gi gir1.2-webkit2-4.0   # GTK backend (recommended), OR
 pip install pyqt5 pyqtwebengine qtpy              # Qt backend
 ```
 Windows and macOS work out of the box — Windows uses the built-in Edge
-WebView2 runtime, macOS uses the built-in WebKit.
+WebView2 runtime, macOS uses the built-in WebKit. If no desktop window
+backend is available for any reason, the app doesn't crash — it prints a
+message, opens the dashboard in your default browser instead, and keeps
+running there. Either way you get the same live map + timeline.
 
 **Setup — just double-click a file, no terminal needed:**
 
