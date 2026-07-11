@@ -11,7 +11,12 @@ function loadRecent() {
   try {
     if (fs.existsSync(LOG_FILE)) {
       const lines = fs.readFileSync(LOG_FILE, 'utf8').trim().split('\n').filter(Boolean);
-      buffer = lines.slice(-MAX_BUFFER).map((line) => JSON.parse(line));
+      const deduped = new Map();
+      for (const line of lines) {
+        const msg = JSON.parse(line);
+        deduped.set(msg.id, msg); // keep the last (most recent) occurrence
+      }
+      buffer = Array.from(deduped.values()).slice(-MAX_BUFFER);
       console.log(`Loaded ${buffer.length} message(s) from history.`);
     }
   } catch (err) {
@@ -20,6 +25,15 @@ function loadRecent() {
 }
 
 function add(message) {
+  // Backfill re-runs on every restart and can re-fetch messages already
+  // known from a previous run (or a message the live handler already
+  // caught) - update in place instead of growing the log with duplicates.
+  const idx = buffer.findIndex((m) => m.id === message.id);
+  if (idx >= 0) {
+    buffer[idx] = message;
+    return;
+  }
+
   buffer.push(message);
   if (buffer.length > MAX_BUFFER) buffer.shift();
   try {

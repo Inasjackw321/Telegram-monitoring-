@@ -31,6 +31,12 @@ TARGET_LANG = os.getenv('TRANSLATE_TARGET_LANG', 'en')
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY', '')
 DEEPL_API_KEY = os.getenv('DEEPL_API_KEY', '')
 
+# On startup, load each monitored channel's recent history so the timeline
+# isn't empty until new messages happen to arrive. Set BACKFILL_LIMIT=0 to
+# disable and only show messages that arrive after the app starts.
+BACKFILL_LIMIT = int(os.getenv('BACKFILL_LIMIT', '15') or '0')
+BACKFILL_HOURS = int(os.getenv('BACKFILL_HOURS', '24') or '24')
+
 GAZETTEER_FILE = ROOT / 'shared' / 'gazetteer.json'
 
 

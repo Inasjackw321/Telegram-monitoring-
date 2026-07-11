@@ -1,5 +1,5 @@
 import asyncio
-from datetime import timezone
+from datetime import datetime, timedelta, timezone
 
 from telethon import TelegramClient, events
 from telethon.errors.rpcerrorlist import ApiIdInvalidError
@@ -35,11 +35,14 @@ async def resolve_monitored_entities(client):
     return monitored
 
 
-async def process_message(client, message, is_edit):
+async def process_message(client, message, is_edit, known_source=None, notify=True):
     try:
-        chat = await message.get_chat()
-        username = getattr(chat, 'username', None)
-        title = getattr(chat, 'title', None) or username or 'Unknown'
+        if known_source is not None:
+            username, title = known_source
+        else:
+            chat = await message.get_chat()
+            username = getattr(chat, 'username', None)
+            title = getattr(chat, 'title', None) or username or 'Unknown'
         chat_id = str(message.chat_id)
 
         text = message.message or ''
@@ -79,10 +82,41 @@ async def process_message(client, message, is_edit):
         else:
             message_store.add(payload)
 
-        if _emit_callback:
+        if notify and _emit_callback:
             _emit_callback(payload, is_edit)
     except Exception as err:
         print(f'Failed to process message: {err}')
+
+
+async def backfill_history(client, monitored):
+    """On startup, load each monitored channel's recent history so the
+    timeline isn't empty until new messages happen to arrive - without this,
+    the app would only ever show messages sent after it started."""
+    if config.BACKFILL_LIMIT <= 0:
+        return
+
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=config.BACKFILL_HOURS)
+    print(f'Backfilling up to {config.BACKFILL_LIMIT} recent message(s) per channel (last {config.BACKFILL_HOURS}h)...')
+
+    total = 0
+    for entry in monitored.values():
+        label = entry['username'] or entry['title']
+        try:
+            async for message in client.iter_messages(entry['entity'], limit=config.BACKFILL_LIMIT):
+                if message.date and message.date < cutoff:
+                    break  # newest-first order, so everything after this is even older
+                if not message.message and not message.media:
+                    continue
+                await process_message(
+                    client, message, False,
+                    known_source=(entry['username'], entry['title']),
+                    notify=False,
+                )
+                total += 1
+        except Exception as err:
+            print(f'Could not backfill @{label}: {err}')
+
+    print(f'Backfill complete: {total} message(s) loaded.')
 
 
 async def _connect():
@@ -130,6 +164,9 @@ async def _main_async():
     @client.on(events.MessageEdited(chats=chat_entities))
     async def _on_edit(event):
         await process_message(client, event.message, True)
+
+    # Register live handlers first so nothing is missed while backfill runs.
+    asyncio.create_task(backfill_history(client, monitored))
 
     await client.run_until_disconnected()
 

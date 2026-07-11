@@ -47,12 +47,20 @@ io.on('connection', (socket) => {
   socket.emit('bootstrap', store.getRecent(200));
 });
 
-async function processMessage(client, message, isEdit) {
+async function processMessage(client, message, isEdit, knownSource, notify = true) {
   try {
-    const chat = await message.getChat();
-    const username = (chat && chat.username) || null;
-    const title = (chat && (chat.title || chat.username)) || 'Unknown';
-    const chatId = chat && chat.id ? chat.id.toString() : 'unknown';
+    let username;
+    let title;
+    let chatId;
+    if (knownSource) {
+      ({ username, title } = knownSource);
+      chatId = message.chatId ? message.chatId.toString() : 'unknown';
+    } else {
+      const chat = await message.getChat();
+      username = (chat && chat.username) || null;
+      title = (chat && (chat.title || chat.username)) || 'Unknown';
+      chatId = chat && chat.id ? chat.id.toString() : 'unknown';
+    }
 
     const text = message.message || '';
     let translatedText = text;
@@ -91,14 +99,44 @@ async function processMessage(client, message, isEdit) {
 
     if (isEdit) {
       store.update(payload);
-      io.emit('messageUpdate', payload);
+      if (notify) io.emit('messageUpdate', payload);
     } else {
       store.add(payload);
-      io.emit('message', payload);
+      if (notify) io.emit('message', payload);
     }
   } catch (err) {
     console.error('Failed to process message:', err);
   }
+}
+
+// On startup, load each monitored channel's recent history so the timeline
+// isn't empty until new messages happen to arrive - without this, the app
+// would only ever show messages sent after it started.
+async function backfillHistory(client, monitored) {
+  if (config.backfillLimit <= 0) return;
+
+  const cutoff = Date.now() - config.backfillHours * 60 * 60 * 1000;
+  console.log(
+    `Backfilling up to ${config.backfillLimit} recent message(s) per channel (last ${config.backfillHours}h)...`
+  );
+
+  let total = 0;
+  for (const entry of monitored.values()) {
+    const label = entry.username || entry.title;
+    try {
+      const messages = await client.getMessages(entry.entity, { limit: config.backfillLimit });
+      for (const message of messages) {
+        if (message.date && message.date * 1000 < cutoff) break; // newest-first, rest are older
+        if (!message.message && !message.media) continue;
+        await processMessage(client, message, false, { username: entry.username, title: entry.title }, false);
+        total += 1;
+      }
+    } catch (err) {
+      console.warn(`Could not backfill @${label}:`, err.message);
+    }
+  }
+
+  console.log(`Backfill complete: ${total} message(s) loaded.`);
 }
 
 async function main() {
@@ -127,6 +165,9 @@ async function main() {
   client.addEventHandler(async (event) => {
     await processMessage(client, event.message, true);
   }, new EditedMessage(eventFilter));
+
+  // Fire-and-forget: don't block startup on backfilling every channel.
+  backfillHistory(client, monitored).catch((err) => console.error('Backfill failed:', err));
 
   server.listen(config.port, () => {
     console.log(`Server listening on http://localhost:${config.port}`);

@@ -137,6 +137,12 @@ has full access to your Telegram account. It's excluded from git.
   bot) via the MTProto protocol — GramJS in Node, Telethon in Python — so it
   can see every chat/channel you're already a member of. Nothing is
   auto-joined. New/edited messages are handled the instant they arrive.
+- **History backfill**: on startup, each monitored channel's recent messages
+  (default: last 15, from the past 24h — tune with `BACKFILL_LIMIT`/
+  `BACKFILL_HOURS` in `.env`) are loaded into the timeline immediately,
+  instead of waiting for new messages to happen to arrive. Set
+  `BACKFILL_LIMIT=0` to disable this and only show messages sent after the
+  app starts.
 - **Translation**: `translate.js` / `translator.py` try Claude Haiku first (if
   you set `ANTHROPIC_API_KEY` — best quality, handles Persian/Arabic news
   idioms and political/military jargon well), then DeepL (if you set

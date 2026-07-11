@@ -17,13 +17,27 @@ def load_recent():
         return
     try:
         lines = log_file.read_text(encoding='utf-8').strip().splitlines()
-        _buffer = [json.loads(line) for line in lines[-MAX_BUFFER:] if line]
+        deduped = {}
+        for line in lines:
+            if not line:
+                continue
+            msg = json.loads(line)
+            deduped[msg['id']] = msg  # keep the last (most recent) occurrence
+        _buffer = list(deduped.values())[-MAX_BUFFER:]
         print(f'Loaded {len(_buffer)} message(s) from history.')
     except Exception as err:
         print(f'Could not load message history: {err}')
 
 
 def add(message):
+    # Backfill re-runs on every restart and can re-fetch messages already
+    # known from a previous run (or a message the live handler already
+    # caught) - update in place instead of growing the log with duplicates.
+    for i, existing in enumerate(_buffer):
+        if existing['id'] == message['id']:
+            _buffer[i] = message
+            return
+
     _buffer.append(message)
     if len(_buffer) > MAX_BUFFER:
         _buffer.pop(0)

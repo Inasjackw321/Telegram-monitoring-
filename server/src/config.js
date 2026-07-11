@@ -15,5 +15,7 @@ module.exports = {
   targetLang: process.env.TRANSLATE_TARGET_LANG || 'en',
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
   deeplApiKey: process.env.DEEPL_API_KEY || '',
+  backfillLimit: parseInt(process.env.BACKFILL_LIMIT || '15', 10),
+  backfillHours: parseInt(process.env.BACKFILL_HOURS || '24', 10),
   mediaDir: resolveFromRoot(process.env.MEDIA_DIR, 'server/media'),
 };
