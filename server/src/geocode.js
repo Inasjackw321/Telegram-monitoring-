@@ -1,4 +1,4 @@
-const gazetteer = require('./gazetteer.json');
+const gazetteer = require('../../shared/gazetteer.json');
 
 // Longest names first, so e.g. "Bandar Abbas" matches before a shorter
 // unrelated substring would, and so specific cities are preferred over

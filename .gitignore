@@ -5,3 +5,11 @@ server/media/
 web/dist/
 *.log
 .DS_Store
+
+# Python app
+python-app/data/
+python-app/media/
+python-app/venv/
+python-app/.venv/
+__pycache__/
+*.pyc

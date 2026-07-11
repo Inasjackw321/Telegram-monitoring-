@@ -13,7 +13,7 @@ const { translateText } = require('./translate');
 const { extractLocations } = require('./geocode');
 const { saveMedia } = require('./mediaStore');
 const store = require('./messageStore');
-const sourcesConfig = require('./sources.json');
+const sourcesConfig = require('../../shared/sources.json');
 
 store.loadRecent();
 

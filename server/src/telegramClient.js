@@ -2,7 +2,7 @@ const fs = require('fs');
 const { TelegramClient, Api } = require('telegram');
 const { StringSession } = require('telegram/sessions');
 const config = require('./config');
-const sources = require('./sources.json');
+const sources = require('../../shared/sources.json');
 
 let client = null;
 
