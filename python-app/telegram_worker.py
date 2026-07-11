@@ -1,19 +1,15 @@
 import asyncio
-import json
 from datetime import timezone
 
 from telethon import TelegramClient, events
 from telethon.errors.rpcerrorlist import ApiIdInvalidError
-from telethon.tl.functions.channels import JoinChannelRequest
 
 import config
 import media_store
 import message_store
+import state
 from geocode import extract_locations
 from translator import translate_text
-
-with open(config.SOURCES_FILE, 'r', encoding='utf-8') as f:
-    SOURCES = json.load(f)
 
 _emit_callback = None  # wired up by app.py to push events to connected browsers
 
@@ -24,38 +20,16 @@ def set_emit_callback(callback):
 
 
 async def resolve_monitored_entities(client):
-    """Everything already joined on the account (if enabled) plus the
-    explicit sources list, joining any public channel from that list that
-    isn't already joined."""
+    """Only channels/groups the account is already a member of - no
+    auto-joining anything."""
     monitored = {}
 
-    if config.INCLUDE_ALL_DIALOGS:
-        async for dialog in client.iter_dialogs():
-            if dialog.is_channel or dialog.is_group:
-                monitored[dialog.id] = {
-                    'entity': dialog.entity,
-                    'username': getattr(dialog.entity, 'username', None),
-                    'title': dialog.title,
-                }
-
-    for source in SOURCES:
-        username = source['username']
-        try:
-            entity = await client.get_entity(username)
-        except Exception as err:
-            print(f'Could not resolve @{username}: {err}')
-            continue
-
-        if entity.id not in monitored:
-            try:
-                await client(JoinChannelRequest(entity))
-                print(f'Joined @{username}')
-            except Exception as err:
-                print(f'Could not join @{username} (may already be joined or private): {err}')
-            monitored[entity.id] = {
-                'entity': entity,
-                'username': username,
-                'title': getattr(entity, 'title', username) or username,
+    async for dialog in client.iter_dialogs():
+        if dialog.is_channel or dialog.is_group:
+            monitored[dialog.id] = {
+                'entity': dialog.entity,
+                'username': getattr(dialog.entity, 'username', None),
+                'title': dialog.title,
             }
 
     return monitored
@@ -140,6 +114,12 @@ async def _main_async():
     for entry in monitored.values():
         handle = f" (@{entry['username']})" if entry['username'] else ''
         print(f"  - {entry['title']}{handle}")
+
+    state.set_monitored_sources([
+        {'username': entry['username'], 'title': entry['title']}
+        for entry in monitored.values()
+        if entry['username']
+    ])
 
     chat_entities = [entry['entity'] for entry in monitored.values()] or None
 

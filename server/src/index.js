@@ -13,7 +13,7 @@ const { translateText } = require('./translate');
 const { extractLocations } = require('./geocode');
 const { saveMedia } = require('./mediaStore');
 const store = require('./messageStore');
-const sourcesConfig = require('../../shared/sources.json');
+const state = require('./state');
 
 store.loadRecent();
 
@@ -27,7 +27,7 @@ app.get('/api/messages', (req, res) => {
 });
 
 app.get('/api/sources', (req, res) => {
-  res.json(sourcesConfig);
+  res.json(state.getMonitoredSources());
 });
 
 // Serve the built frontend in production (after `npm run build`).
@@ -110,6 +110,12 @@ async function main() {
   for (const entry of monitored.values()) {
     console.log(`  - ${entry.title}${entry.username ? ` (@${entry.username})` : ''}`);
   }
+
+  state.setMonitoredSources(
+    Array.from(monitored.values())
+      .filter((entry) => entry.username)
+      .map((entry) => ({ username: entry.username, title: entry.title }))
+  );
 
   const chatEntities = Array.from(monitored.values()).map((entry) => entry.entity);
   const eventFilter = chatEntities.length ? { chats: chatEntities } : {};

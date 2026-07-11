@@ -30,9 +30,7 @@ PORT = int(os.getenv('PY_PORT', '4300'))
 TARGET_LANG = os.getenv('TRANSLATE_TARGET_LANG', 'en')
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY', '')
 DEEPL_API_KEY = os.getenv('DEEPL_API_KEY', '')
-INCLUDE_ALL_DIALOGS = os.getenv('INCLUDE_ALL_DIALOGS', 'true').lower() != 'false'
 
-SOURCES_FILE = ROOT / 'shared' / 'sources.json'
 GAZETTEER_FILE = ROOT / 'shared' / 'gazetteer.json'
 
 

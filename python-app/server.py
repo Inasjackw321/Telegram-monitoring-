@@ -1,13 +1,9 @@
-import json
-
 from flask import Flask, jsonify, render_template, request, send_from_directory
 from flask_socketio import SocketIO
 
 import config
 import message_store
-
-with open(config.SOURCES_FILE, 'r', encoding='utf-8') as f:
-    SOURCES = json.load(f)
+import state
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 socketio = SocketIO(app, cors_allowed_origins='*', async_mode='threading')
@@ -26,7 +22,7 @@ def api_messages():
 
 @app.route('/api/sources')
 def api_sources():
-    return jsonify(SOURCES)
+    return jsonify(state.get_monitored_sources())
 
 
 @app.route('/media/<path:filename>')

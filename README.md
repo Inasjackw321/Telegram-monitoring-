@@ -14,23 +14,16 @@ pick whichever suits you (or run both, they use separate ports/sessions):
 | How you run it | `npm run dev`, open a browser tab | Double-click a launcher file — it asks for your API keys itself |
 | Best for | Tinkering with the React UI / wanting the map | The simplest possible way to just get it running |
 
-Both monitor:
-- Every channel/group your Telegram account is already a member of (optional, on by default)
-- Plus an explicit list of channels (pre-configured with the sources you gave),
-  shared between both apps in `shared/sources.json`:
-  - `Middle_East_Spectator`
-  - `mehrnews`
-  - `naya_foriraq`
-  - `Reza_Mad`
-  - `final_battle313`
-  - `Iranian_Militarism`
-  - `Mellig`
+Both monitor every channel/group your Telegram account is already a member
+of — nothing is auto-joined. To add a channel, join it yourself in Telegram
+and restart the app; to stop monitoring one, leave it. The list of monitored
+channels shown in the app (source filter chips, `/api/sources`) is built live
+from your actual account each time it connects.
 
-Both auto-join any of those that aren't already joined on your account, and
-both use the same geolocation gazetteer (`shared/gazetteer.json`, used to tag
-each message with a place name) and the same translation strategy (free
-Google Translate endpoint by default, optional DeepL key for reliability, or
-Claude Haiku for the best quality — see below).
+Both also use the same geolocation gazetteer (`shared/gazetteer.json`, used
+to tag each message with a place name) and the same translation strategy
+(free Google Translate endpoint by default, optional DeepL key for
+reliability, or Claude Haiku for the best quality — see below).
 
 ## Prerequisites (either app)
 
@@ -142,8 +135,8 @@ has full access to your Telegram account. It's excluded from git.
 
 - **Telegram connection**: logs in as your own Telegram user account (not a
   bot) via the MTProto protocol — GramJS in Node, Telethon in Python — so it
-  can see every chat/channel you're a member of, plus join new ones from the
-  configured source list. New/edited messages are handled the instant they arrive.
+  can see every chat/channel you're already a member of. Nothing is
+  auto-joined. New/edited messages are handled the instant they arrive.
 - **Translation**: `translate.js` / `translator.py` try Claude Haiku first (if
   you set `ANTHROPIC_API_KEY` — best quality, handles Persian/Arabic news
   idioms and political/military jargon well), then DeepL (if you set
@@ -165,17 +158,15 @@ has full access to your Telegram account. It's excluded from git.
 
 ## Adding or changing monitored channels
 
-Edit `shared/sources.json` (used by both apps) — it's a simple list:
+There's no config file to edit — monitoring is based entirely on your actual
+Telegram account:
 
-```json
-[{ "username": "some_channel" }]
-```
+- **To monitor a new channel**: join it yourself in Telegram (the normal
+  way), then restart whichever app you're running.
+- **To stop monitoring one**: leave it in Telegram, then restart.
 
-Restart whichever app you're running to pick up changes. If
-`INCLUDE_ALL_DIALOGS=true` (the default, set in `.env`), every channel/group
-already on your account is monitored automatically as well — the explicit
-list mainly matters for channels you haven't joined yet, since the app will
-join them for you.
+The source filter chips in the app, and the list `/api/sources` returns, are
+built live from your account's channels/groups each time it connects.
 
 ## Extending place recognition
 
