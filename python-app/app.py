@@ -1,8 +1,7 @@
 import socket as pysocket
 import threading
 import time
-
-import webview
+import webbrowser
 
 import config
 import message_store
@@ -20,6 +19,20 @@ def _wait_for_port(host, port, timeout=15):
     return False
 
 
+def _run_in_browser(url):
+    """Fallback when no desktop window backend is available: keep the
+    server running and use a normal browser tab instead of crashing."""
+    print()
+    print(f'Opening in your browser instead: {url}')
+    print('Leave this window open - the app keeps running here. Press Ctrl+C to stop it.')
+    webbrowser.open(url)
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print('\nStopped.')
+
+
 def main():
     message_store.load_recent()
     telegram_worker.set_emit_callback(emit_message)
@@ -35,14 +48,22 @@ def main():
         'prompt (phone number / code / 2FA password).'
     )
 
-    webview.create_window(
-        'Telegram Live Monitor',
-        f'http://127.0.0.1:{config.PORT}',
-        width=1400,
-        height=900,
-        min_size=(900, 600),
-    )
-    webview.start()
+    url = f'http://127.0.0.1:{config.PORT}'
+
+    try:
+        import webview
+    except ImportError as err:
+        print(f'\nCould not load pywebview ({err}).')
+        _run_in_browser(url)
+        return
+
+    try:
+        webview.create_window('Telegram Live Monitor', url, width=1400, height=900, min_size=(900, 600))
+        webview.start()
+    except Exception as err:
+        print(f'\nCould not open the desktop window ({err}).')
+        print('(See the README for how to enable the desktop window backend on this OS.)')
+        _run_in_browser(url)
 
 
 if __name__ == '__main__':
