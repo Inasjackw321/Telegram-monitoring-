@@ -34,6 +34,8 @@ def _run_in_browser(url):
 
 
 def main():
+    config.ensure_credentials()
+
     message_store.load_recent()
     telegram_worker.set_emit_callback(emit_message)
 

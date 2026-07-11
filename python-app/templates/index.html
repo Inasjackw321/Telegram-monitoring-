@@ -4,7 +4,6 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Telegram Live Monitor</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
 </head>
 <body>
@@ -15,16 +14,12 @@
       <div id="source-filter" class="source-filter"></div>
     </header>
     <main class="app-main">
-      <div id="map" class="map-container"></div>
-      <aside class="feed-panel">
-        <div class="feed-header">Timeline (<span id="feed-count">0</span>)</div>
-        <div id="feed-list" class="feed-list"></div>
-      </aside>
+      <div class="feed-header">Timeline (<span id="feed-count">0</span>)</div>
+      <div id="feed-list" class="feed-list"></div>
     </main>
   </div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="{{ url_for('static', filename='socket.io.min.js') }}"></script>
   <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>

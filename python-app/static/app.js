@@ -1,26 +1,14 @@
 const socket = io();
-const map = L.map('map').setView([33.5, 44], 5);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '&copy; OpenStreetMap contributors',
-}).addTo(map);
 
 let messages = [];
 let sources = [];
 let activeSources = new Set();
-let selectedId = null;
-let mapMarkers = new Map(); // coord key -> L.Marker
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
   if (className) node.className = className;
   if (text !== undefined) node.textContent = text;
   return node;
-}
-
-function escapeHtml(value) {
-  const div = document.createElement('div');
-  div.textContent = value;
-  return div.innerHTML;
 }
 
 async function loadInitial() {
@@ -32,7 +20,7 @@ async function loadInitial() {
   activeSources = new Set(srcs.map((s) => s.username));
   renderSourceFilter();
   messages = msgs;
-  renderAll();
+  renderFeed();
 }
 
 function renderSourceFilter() {
@@ -47,7 +35,7 @@ function renderSourceFilter() {
       if (activeSources.has(s.username)) activeSources.delete(s.username);
       else activeSources.add(s.username);
       renderSourceFilter();
-      renderAll();
+      renderFeed();
     });
     label.appendChild(input);
     label.appendChild(document.createTextNode(s.username));
@@ -57,11 +45,6 @@ function renderSourceFilter() {
 
 function visibleMessages() {
   return messages.filter((m) => !m.source || !m.source.username || activeSources.has(m.source.username));
-}
-
-function renderAll() {
-  renderFeed();
-  renderMarkers();
 }
 
 function dateLabel(d) {
@@ -107,7 +90,7 @@ function renderFeed() {
 }
 
 function renderTimelineItem(m, d) {
-  const item = el('div', 'timeline-item' + (m.id === selectedId ? ' selected' : ''));
+  const item = el('div', 'timeline-item');
 
   const rail = el('div', 'timeline-rail');
   rail.appendChild(el('span', 'timeline-dot'));
@@ -121,7 +104,7 @@ function renderTimelineItem(m, d) {
 }
 
 function renderCard(m, d) {
-  const card = el('div', 'message-card' + (m.id === selectedId ? ' selected' : ''));
+  const card = el('div', 'message-card');
 
   const meta = el('div', 'message-meta');
   meta.appendChild(el('span', 'source', (m.source && m.source.title) || 'Unknown'));
@@ -158,8 +141,7 @@ function renderCard(m, d) {
     const btn = document.createElement('button');
     btn.textContent = 'Show original';
     let showingOriginal = false;
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
+    btn.addEventListener('click', () => {
       showingOriginal = !showingOriginal;
       textEl.textContent = showingOriginal ? m.originalText : m.translatedText;
       btn.textContent = showingOriginal ? 'Show translation' : 'Show original';
@@ -172,62 +154,11 @@ function renderCard(m, d) {
     a.target = '_blank';
     a.rel = 'noreferrer';
     a.textContent = 'Open in Telegram';
-    a.addEventListener('click', (e) => e.stopPropagation());
     actions.appendChild(a);
   }
   card.appendChild(actions);
 
-  card.addEventListener('click', () => selectMessage(m));
   return card;
-}
-
-function selectMessage(m) {
-  selectedId = m.id;
-  renderFeed();
-  if (m.locations && m.locations.length) {
-    const loc = m.locations[0];
-    map.flyTo([loc.lat, loc.lon], Math.max(map.getZoom(), 8), { duration: 1 });
-  }
-}
-
-function renderMarkers() {
-  mapMarkers.forEach((marker) => map.removeLayer(marker));
-  mapMarkers.clear();
-
-  const groups = new Map();
-  visibleMessages().forEach((m) => {
-    (m.locations || []).forEach((loc) => {
-      const key = loc.lat.toFixed(2) + ',' + loc.lon.toFixed(2);
-      if (!groups.has(key)) groups.set(key, { lat: loc.lat, lon: loc.lon, name: loc.name, messages: [] });
-      groups.get(key).messages.push(m);
-    });
-  });
-
-  groups.forEach((group, key) => {
-    const marker = L.marker([group.lat, group.lon]).addTo(map);
-    const items = group.messages
-      .slice(0, 5)
-      .map(
-        (m) =>
-          `<li data-id="${m.id}"><em>${escapeHtml((m.source && m.source.title) || '')}</em>: ${escapeHtml(
-            (m.translatedText || '').slice(0, 120)
-          )}${m.link ? ` <a href="${m.link}" target="_blank" rel="noreferrer">open</a>` : ''}</li>`
-      )
-      .join('');
-    marker.bindPopup(
-      `<div class="popup"><strong>${escapeHtml(group.name)}</strong>` +
-        `<div class="popup-count">${group.messages.length} update(s)</div><ul>${items}</ul></div>`
-    );
-    marker.on('popupopen', () => {
-      document.querySelectorAll('.popup li').forEach((li) => {
-        li.addEventListener('click', () => {
-          const match = messages.find((mm) => mm.id === li.dataset.id);
-          if (match) selectMessage(match);
-        });
-      });
-    });
-    mapMarkers.set(key, marker);
-  });
 }
 
 function setStatus(connected) {
@@ -242,20 +173,20 @@ socket.on('disconnect', () => setStatus(false));
 socket.on('bootstrap', (list) => {
   if (!messages.length) {
     messages = list;
-    renderAll();
+    renderFeed();
   }
 });
 
 socket.on('message', (msg) => {
   messages = [msg, ...messages].slice(0, 500);
-  renderAll();
+  renderFeed();
 });
 
 socket.on('messageUpdate', (msg) => {
   const idx = messages.findIndex((m) => m.id === msg.id);
   if (idx === -1) messages = [msg, ...messages];
   else messages[idx] = msg;
-  renderAll();
+  renderFeed();
 });
 
 loadInitial();

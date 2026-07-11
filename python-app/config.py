@@ -32,3 +32,65 @@ INCLUDE_ALL_DIALOGS = os.getenv('INCLUDE_ALL_DIALOGS', 'true').lower() != 'false
 
 SOURCES_FILE = ROOT / 'shared' / 'sources.json'
 GAZETTEER_FILE = ROOT / 'shared' / 'gazetteer.json'
+
+
+def _write_env_value(key, value):
+    env_path = ROOT / '.env'
+    example_path = ROOT / '.env.example'
+
+    if env_path.exists():
+        lines = env_path.read_text(encoding='utf-8').splitlines()
+    elif example_path.exists():
+        lines = example_path.read_text(encoding='utf-8').splitlines()
+    else:
+        lines = []
+
+    found = False
+    for i, line in enumerate(lines):
+        if line.strip().startswith(f'{key}='):
+            lines[i] = f'{key}={value}'
+            found = True
+            break
+    if not found:
+        lines.append(f'{key}={value}')
+
+    env_path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+
+
+def ensure_credentials():
+    """Prompt for the Telegram API ID/hash right here in the console if
+    they're not already configured, and save them to .env so this only
+    ever happens once per machine."""
+    global API_ID, API_HASH
+
+    if API_ID and API_HASH:
+        return
+
+    print()
+    print('=' * 60)
+    print('Telegram API credentials needed (one-time setup)')
+    print('=' * 60)
+    print('Get these for free at https://my.telegram.org :')
+    print('  1. Log in with the phone number of the account to monitor')
+    print('  2. Click "API development tools"')
+    print('  3. Create an app (any name/description is fine)')
+    print('  4. Copy the "api_id" and "api_hash" values shown there')
+    print()
+
+    while not API_ID:
+        raw = input('Paste your api_id (a number): ').strip()
+        if raw.isdigit():
+            API_ID = int(raw)
+        else:
+            print("That doesn't look like a number - try again.")
+
+    while not API_HASH:
+        raw = input('Paste your api_hash: ').strip()
+        if raw:
+            API_HASH = raw
+
+    _write_env_value('TELEGRAM_API_ID', str(API_ID))
+    _write_env_value('TELEGRAM_API_HASH', API_HASH)
+    print()
+    print("Saved - you won't be asked for these again on this computer.")
+    print()

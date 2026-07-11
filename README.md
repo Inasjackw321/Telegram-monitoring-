@@ -1,8 +1,8 @@
 # Telegram Live Monitor
 
 A real-time dashboard that connects to your own Telegram account, watches
-channels for new posts, auto-translates them, geolocates mentioned places onto
-a live map, and streams photos/videos into a live feed — all updated instantly.
+channels for new posts, auto-translates them, and streams them — with any
+photos/videos — into a live timeline, updated instantly.
 
 There are **two independent implementations of the same app** in this repo —
 pick whichever suits you (or run both, they use separate ports/sessions):
@@ -10,8 +10,9 @@ pick whichever suits you (or run both, they use separate ports/sessions):
 | | `server/` + `web/` | `python-app/` |
 |---|---|---|
 | Stack | Node.js (GramJS) + React/Vite frontend | Python (Telethon) + Flask, no build step |
-| How you run it | `npm run dev`, open a browser tab | `python app.py` — opens its own desktop window |
-| Best for | Tinkering with the React UI | Just double-clicking/running one command and going |
+| View | Map + timeline feed side by side | Just the timeline, full width |
+| How you run it | `npm run dev`, open a browser tab | Double-click a launcher file — it asks for your API keys itself |
+| Best for | Tinkering with the React UI / wanting the map | The simplest possible way to just get it running |
 
 Both monitor:
 - Every channel/group your Telegram account is already a member of (optional, on by default)
@@ -26,22 +27,16 @@ Both monitor:
   - `Mellig`
 
 Both auto-join any of those that aren't already joined on your account, and
-both use the same geolocation gazetteer (`shared/gazetteer.json`) and the same
-translation strategy (free Google Translate endpoint by default, optional
-DeepL key for reliability).
+both use the same geolocation gazetteer (`shared/gazetteer.json`, used to tag
+each message with a place name) and the same translation strategy (free
+Google Translate endpoint by default, optional DeepL key for reliability).
 
 ## Prerequisites (either app)
 
 - A Telegram account (the one whose channels you want to monitor)
 - A Telegram API ID + hash from <https://my.telegram.org> ("API development tools")
-- A shared `.env` file at the repo root:
-
-  ```bash
-  cp .env.example .env
-  ```
-
-  Fill in `TELEGRAM_API_ID` and `TELEGRAM_API_HASH`. Both apps read this same
-  file, so you only need to do this once.
+  — the Python app will ask you for these itself on first run and save them;
+  for the Node app, copy `.env.example` to `.env` and fill them in yourself.
 
 ---
 
@@ -62,7 +57,7 @@ Windows and macOS work out of the box — Windows uses the built-in Edge
 WebView2 runtime, macOS uses the built-in WebKit. If no desktop window
 backend is available for any reason, the app doesn't crash — it prints a
 message, opens the dashboard in your default browser instead, and keeps
-running there. Either way you get the same live map + timeline.
+running there. Either way you get the same live timeline.
 
 **Setup — just double-click a file, no terminal needed:**
 
@@ -87,13 +82,18 @@ pip install -r requirements.txt
 python app.py
 ```
 
-On first run, **check that console window** — Telethon will prompt you right there
-for your phone number, the login code Telegram sends you, and your 2FA
-password if you have one. After that it saves a session file
-(`python-app/data/session.session`) and won't ask again.
+On first run, **check that console window** — it'll ask you two things,
+one after the other, right there in the console:
+
+1. Your Telegram **api_id** and **api_hash** (from <https://my.telegram.org>).
+   It saves these to `.env` at the repo root so you're never asked again on
+   this computer.
+2. Your Telegram account login: phone number, the code Telegram sends you,
+   and your 2FA password if you have one. This creates a session file
+   (`python-app/data/session.session`) and won't ask again either.
 
 Once connected, a window titled "Telegram Live Monitor" opens automatically
-with the live map and feed. Just run `python app.py` again next time.
+with the live timeline. Just run the launcher again next time — no prompts.
 
 **Treat `python-app/data/session.session` like a password** — anyone with it
 has full access to your Telegram account. It's excluded from git.
@@ -149,13 +149,16 @@ has full access to your Telegram account. It's excluded from git.
 - **Geolocation**: translated message text is matched against
   `shared/gazetteer.json`, a `"Place Name": [lat, lon]` map covering
   Iran/Iraq/Syria/Lebanon/Israel-Palestine/Yemen/Gulf/Turkey/Afghanistan/
-  Pakistan. This is heuristic keyword matching, not full NLP geocoding — easy
-  to extend by adding more entries to that one file (used by both apps).
+  Pakistan. Each message gets tagged with any place names found (shown as a
+  📍 label in the timeline card, and additionally plotted as a pin on the map
+  in the Node app). This is heuristic keyword matching, not full NLP geocoding.
 - **Media**: photos/videos are downloaded and served from a local `media/`
   folder and shown inline in the feed. Other attachment types (audio,
   generic documents) are skipped to keep things focused on visual media.
 - **Realtime updates**: Socket.IO pushes every new/edited message to the open
-  browser tab or desktop window the moment it's processed — no polling.
+  browser tab or desktop window the moment it's processed — no polling. The
+  timeline groups everything by day (Today / Yesterday / date) with a
+  connecting line, newest first.
 
 ## Adding or changing monitored channels
 
@@ -171,7 +174,7 @@ already on your account is monitored automatically as well — the explicit
 list mainly matters for channels you haven't joined yet, since the app will
 join them for you.
 
-## Extending the map's place recognition
+## Extending place recognition
 
 `shared/gazetteer.json` is a plain `"Place Name": [lat, lon]` map used for
 keyword-based geolocation, shared by both apps. Add entries for any additional
