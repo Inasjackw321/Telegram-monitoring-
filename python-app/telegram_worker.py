@@ -3,6 +3,7 @@ import json
 from datetime import timezone
 
 from telethon import TelegramClient, events
+from telethon.errors.rpcerrorlist import ApiIdInvalidError
 from telethon.tl.functions.channels import JoinChannelRequest
 
 import config
@@ -110,9 +111,28 @@ async def process_message(client, message, is_edit):
         print(f'Failed to process message: {err}')
 
 
+async def _connect():
+    """Create and start a client, looping back to re-prompt for credentials
+    if Telegram rejects the api_id/api_hash pair instead of crashing."""
+    while True:
+        client = TelegramClient(str(config.SESSION_FILE), config.API_ID, config.API_HASH)
+        try:
+            await client.start()
+            return client
+        except ApiIdInvalidError:
+            try:
+                await client.disconnect()
+            except Exception:
+                pass
+            print()
+            print("Telegram rejected that api_id/api_hash - they don't match a real app.")
+            print('Double check both values from https://my.telegram.org (API development tools) and try again.')
+            config.reset_credentials()
+            config.ensure_credentials()
+
+
 async def _main_async():
-    client = TelegramClient(str(config.SESSION_FILE), config.API_ID, config.API_HASH)
-    await client.start()
+    client = await _connect()
     print('Connected to Telegram.')
 
     monitored = await resolve_monitored_entities(client)

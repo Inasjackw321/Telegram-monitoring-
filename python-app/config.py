@@ -1,4 +1,5 @@
 import os
+import re
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -57,6 +58,16 @@ def _write_env_value(key, value):
     env_path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
 
 
+def reset_credentials():
+    """Clear a rejected api_id/api_hash pair (in memory and in .env) so
+    ensure_credentials() will prompt for them again."""
+    global API_ID, API_HASH
+    API_ID = 0
+    API_HASH = ''
+    _write_env_value('TELEGRAM_API_ID', '')
+    _write_env_value('TELEGRAM_API_HASH', '')
+
+
 def ensure_credentials():
     """Prompt for the Telegram API ID/hash right here in the console if
     they're not already configured, and save them to .env so this only
@@ -78,16 +89,22 @@ def ensure_credentials():
     print()
 
     while not API_ID:
-        raw = input('Paste your api_id (a number): ').strip()
-        if raw.isdigit():
+        raw = input('Paste your api_id (a number, e.g. 1234567): ').strip().strip('"\'')
+        if raw.isdigit() and int(raw) > 0:
             API_ID = int(raw)
         else:
-            print("That doesn't look like a number - try again.")
+            print("That doesn't look like a valid api_id - it should be just digits. Try again.")
 
     while not API_HASH:
-        raw = input('Paste your api_hash: ').strip()
-        if raw:
+        raw = input('Paste your api_hash (32 letters/numbers): ').strip().strip('"\'')
+        if re.fullmatch(r'[0-9a-fA-F]{32}', raw):
             API_HASH = raw
+        else:
+            print(
+                "That doesn't look like a valid api_hash - it should be exactly 32 letters/numbers "
+                "(e.g. 0123456789abcdef0123456789abcdef)."
+            )
+            print('Make sure you copied the "api_hash" field, not the api_id or app name, and with no extra spaces.')
 
     _write_env_value('TELEGRAM_API_ID', str(API_ID))
     _write_env_value('TELEGRAM_API_HASH', API_HASH)
