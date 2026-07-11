@@ -1,14 +1,28 @@
 const socket = io();
 
+const AVATAR_PALETTE = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#ef4444', '#06b6d4', '#6366f1'];
+
 let messages = [];
 let sources = [];
 let activeSources = new Set();
+let lastArrivedId = null;
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
   if (className) node.className = className;
   if (text !== undefined) node.textContent = text;
   return node;
+}
+
+function colorForSource(name) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  return AVATAR_PALETTE[hash % AVATAR_PALETTE.length];
+}
+
+function initialsForSource(name) {
+  const clean = (name || '?').replace(/[^a-zA-Z0-9]/g, '');
+  return (clean.slice(0, 2) || name.slice(0, 2) || '?').toUpperCase();
 }
 
 async function loadInitial() {
@@ -28,6 +42,8 @@ function renderSourceFilter() {
   container.innerHTML = '';
   sources.forEach((s) => {
     const label = el('label', activeSources.has(s.username) ? 'on' : 'off');
+    const dot = el('span', 'source-dot');
+    dot.style.background = colorForSource(s.username);
     const input = document.createElement('input');
     input.type = 'checkbox';
     input.checked = activeSources.has(s.username);
@@ -38,6 +54,7 @@ function renderSourceFilter() {
       renderFeed();
     });
     label.appendChild(input);
+    label.appendChild(dot);
     label.appendChild(document.createTextNode(s.username));
     container.appendChild(label);
   });
@@ -90,7 +107,8 @@ function renderFeed() {
 }
 
 function renderTimelineItem(m, d) {
-  const item = el('div', 'timeline-item');
+  const isNew = m.id === lastArrivedId;
+  const item = el('div', 'timeline-item' + (isNew ? ' new' : ''));
 
   const rail = el('div', 'timeline-rail');
   rail.appendChild(el('span', 'timeline-dot'));
@@ -105,9 +123,15 @@ function renderTimelineItem(m, d) {
 
 function renderCard(m, d) {
   const card = el('div', 'message-card');
+  const sourceTitle = (m.source && m.source.title) || 'Unknown';
 
   const meta = el('div', 'message-meta');
-  meta.appendChild(el('span', 'source', (m.source && m.source.title) || 'Unknown'));
+  const identity = el('div', 'message-identity');
+  const avatar = el('span', 'avatar', initialsForSource(sourceTitle));
+  avatar.style.background = colorForSource(sourceTitle);
+  identity.appendChild(avatar);
+  identity.appendChild(el('span', 'source', sourceTitle));
+  meta.appendChild(identity);
   const time = document.createElement('time');
   time.textContent = d ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
   if (d) time.title = d.toLocaleString();
@@ -163,7 +187,9 @@ function renderCard(m, d) {
 
 function setStatus(connected) {
   const statusEl = document.getElementById('status');
-  statusEl.textContent = connected ? '● Live' : '○ Disconnected';
+  statusEl.innerHTML = '';
+  statusEl.appendChild(el('span', 'status-dot'));
+  statusEl.appendChild(document.createTextNode(connected ? 'Live' : 'Disconnected'));
   statusEl.className = 'status ' + (connected ? 'online' : 'offline');
 }
 
@@ -179,6 +205,7 @@ socket.on('bootstrap', (list) => {
 
 socket.on('message', (msg) => {
   messages = [msg, ...messages].slice(0, 500);
+  lastArrivedId = msg.id;
   renderFeed();
 });
 
