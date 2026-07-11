@@ -29,7 +29,8 @@ Both monitor:
 Both auto-join any of those that aren't already joined on your account, and
 both use the same geolocation gazetteer (`shared/gazetteer.json`, used to tag
 each message with a place name) and the same translation strategy (free
-Google Translate endpoint by default, optional DeepL key for reliability).
+Google Translate endpoint by default, optional DeepL key for reliability, or
+Claude Haiku for the best quality — see below).
 
 ## Prerequisites (either app)
 
@@ -143,9 +144,11 @@ has full access to your Telegram account. It's excluded from git.
   bot) via the MTProto protocol — GramJS in Node, Telethon in Python — so it
   can see every chat/channel you're a member of, plus join new ones from the
   configured source list. New/edited messages are handled the instant they arrive.
-- **Translation**: `translate.js` / `translator.py` try DeepL first (if you
-  set `DEEPL_API_KEY`), otherwise fall back to the free, keyless Google
-  Translate endpoint.
+- **Translation**: `translate.js` / `translator.py` try Claude Haiku first (if
+  you set `ANTHROPIC_API_KEY` — best quality, handles Persian/Arabic news
+  idioms and political/military jargon well), then DeepL (if you set
+  `DEEPL_API_KEY`), otherwise fall back to the free, keyless Google Translate
+  endpoint.
 - **Geolocation**: translated message text is matched against
   `shared/gazetteer.json`, a `"Place Name": [lat, lon]` map covering
   Iran/Iraq/Syria/Lebanon/Israel-Palestine/Yemen/Gulf/Turkey/Afghanistan/
@@ -187,7 +190,8 @@ cities/regions you care about — no code changes needed, just restart.
   putting it behind a login/proxy, since both stream live content from your
   Telegram account.
 - The free translation endpoint may rate-limit under heavy traffic; set
-  `DEEPL_API_KEY` in `.env` if you need something more robust.
+  `ANTHROPIC_API_KEY` (best quality) or `DEEPL_API_KEY` in `.env` if you need
+  something more robust.
 - Geolocation is keyword-based, not true NLP — it will miss unlisted places
   and can't disambiguate identically-named places in different countries.
 - The two apps keep separate login sessions and separate ports

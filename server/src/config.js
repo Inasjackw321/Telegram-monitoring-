@@ -13,6 +13,7 @@ module.exports = {
   sessionFile: resolveFromRoot(process.env.TELEGRAM_SESSION_FILE, 'server/data/session.txt'),
   port: parseInt(process.env.PORT || '4000', 10),
   targetLang: process.env.TRANSLATE_TARGET_LANG || 'en',
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
   deeplApiKey: process.env.DEEPL_API_KEY || '',
   includeAllDialogs: (process.env.INCLUDE_ALL_DIALOGS || 'true').toLowerCase() !== 'false',
   mediaDir: resolveFromRoot(process.env.MEDIA_DIR, 'server/media'),
