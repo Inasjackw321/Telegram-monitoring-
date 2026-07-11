@@ -61,7 +61,20 @@ pip install pyqt5 pyqtwebengine qtpy              # Qt backend
 Windows and macOS work out of the box — Windows uses the built-in Edge
 WebView2 runtime, macOS uses the built-in WebKit.
 
-**Setup:**
+**Setup — just double-click a file, no terminal needed:**
+
+- **Windows:** double-click `python-app/Start Telegram Monitor.bat`
+- **macOS:** double-click `python-app/Start Telegram Monitor.command`
+  (if macOS blocks it as an unidentified script, right-click it and choose
+  "Open" once to approve it)
+- **Linux:** double-click `python-app/start-telegram-monitor.sh` in your file
+  manager and choose "Run" if prompted (or run `./start-telegram-monitor.sh`
+  from a terminal)
+
+Each of these opens a console window, creates a `.venv` and installs
+dependencies automatically the first time (takes a minute or two), then
+launches the app. On later runs it skips straight to launching. You can
+still do this manually if you prefer:
 
 ```bash
 cd python-app
@@ -71,7 +84,7 @@ pip install -r requirements.txt
 python app.py
 ```
 
-On first run, **check your terminal** — Telethon will prompt you right there
+On first run, **check that console window** — Telethon will prompt you right there
 for your phone number, the login code Telegram sends you, and your 2FA
 password if you have one. After that it saves a session file
 (`python-app/data/session.session`) and won't ask again.
