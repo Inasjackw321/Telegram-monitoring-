@@ -64,25 +64,70 @@ function renderAll() {
   renderMarkers();
 }
 
+function dateLabel(d) {
+  const now = new Date();
+  const startOfDay = (dt) => new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()).getTime();
+  const diffDays = Math.round((startOfDay(now) - startOfDay(d)) / 86400000);
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  return d.toLocaleDateString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
+  });
+}
+
 function renderFeed() {
   const list = document.getElementById('feed-list');
-  const visible = visibleMessages();
+  const visible = visibleMessages()
+    .slice()
+    .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
   document.getElementById('feed-count').textContent = visible.length;
   list.innerHTML = '';
+  list.classList.add('timeline');
+
   if (!visible.length) {
     list.appendChild(el('div', 'empty', 'Waiting for messages...'));
     return;
   }
-  visible.forEach((m) => list.appendChild(renderCard(m)));
+
+  let lastDateKey = null;
+  visible.forEach((m) => {
+    const d = m.date ? new Date(m.date) : null;
+    const dateKey = d ? d.toDateString() : 'unknown';
+    if (dateKey !== lastDateKey) {
+      const sep = el('div', 'timeline-date-sep');
+      sep.appendChild(el('span', null, d ? dateLabel(d) : 'Unknown date'));
+      list.appendChild(sep);
+      lastDateKey = dateKey;
+    }
+    list.appendChild(renderTimelineItem(m, d));
+  });
 }
 
-function renderCard(m) {
+function renderTimelineItem(m, d) {
+  const item = el('div', 'timeline-item' + (m.id === selectedId ? ' selected' : ''));
+
+  const rail = el('div', 'timeline-rail');
+  rail.appendChild(el('span', 'timeline-dot'));
+  item.appendChild(rail);
+
+  const body = el('div', 'timeline-body');
+  body.appendChild(renderCard(m, d));
+  item.appendChild(body);
+
+  return item;
+}
+
+function renderCard(m, d) {
   const card = el('div', 'message-card' + (m.id === selectedId ? ' selected' : ''));
 
   const meta = el('div', 'message-meta');
   meta.appendChild(el('span', 'source', (m.source && m.source.title) || 'Unknown'));
   const time = document.createElement('time');
-  time.textContent = m.date ? new Date(m.date).toLocaleString() : '';
+  time.textContent = d ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
+  if (d) time.title = d.toLocaleString();
   meta.appendChild(time);
   card.appendChild(meta);
 
