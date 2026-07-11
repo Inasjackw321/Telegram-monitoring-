@@ -1,0 +1,7 @@
+telethon>=1.36,<2
+flask>=3.0,<4
+flask-socketio>=5.3,<6
+simple-websocket>=1.0
+python-dotenv>=1.0
+requests>=2.31
+pywebview>=5.0

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Telegram Live Monitor</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <h1>Telegram Live Monitor</h1>
+      <span id="status" class="status offline">○ Disconnected</span>
+      <div id="source-filter" class="source-filter"></div>
+    </header>
+    <main class="app-main">
+      <div id="map" class="map-container"></div>
+      <aside class="feed-panel">
+        <div class="feed-header">Live Feed (<span id="feed-count">0</span>)</div>
+        <div id="feed-list" class="feed-list"></div>
+      </aside>
+    </main>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
