@@ -1,0 +1,19 @@
+{
+  "name": "telegram-monitoring",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Real-time Telegram channel monitor with auto-translation, geolocation mapping, and live media feed.",
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "scripts": {
+    "login": "npm run login -w server",
+    "dev": "concurrently -k -n SERVER,WEB -c blue,green \"npm run dev -w server\" \"npm run dev -w web\"",
+    "build": "npm run build -w web",
+    "start": "npm run start -w server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1"
+  }
+}
