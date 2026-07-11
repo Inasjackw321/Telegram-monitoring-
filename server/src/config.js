@@ -17,5 +17,6 @@ module.exports = {
   deeplApiKey: process.env.DEEPL_API_KEY || '',
   backfillLimit: parseInt(process.env.BACKFILL_LIMIT || '15', 10),
   backfillHours: parseInt(process.env.BACKFILL_HOURS || '24', 10),
+  backfillConcurrency: parseInt(process.env.BACKFILL_CONCURRENCY || '8', 10),
   mediaDir: resolveFromRoot(process.env.MEDIA_DIR, 'server/media'),
 };

@@ -109,34 +109,61 @@ async function processMessage(client, message, isEdit, knownSource, notify = tru
   }
 }
 
+// Runs `worker` over `items` with at most `concurrency` in flight at once,
+// instead of strictly one at a time.
+async function mapWithConcurrency(items, concurrency, worker) {
+  const queue = [...items];
+  const results = [];
+  async function runOne() {
+    while (queue.length) {
+      const item = queue.shift();
+      results.push(await worker(item));
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, runOne));
+  return results;
+}
+
+async function backfillOneChannel(client, entry, cutoff) {
+  const label = entry.username || entry.title;
+  let count = 0;
+  try {
+    const messages = await client.getMessages(entry.entity, { limit: config.backfillLimit });
+    for (const message of messages) {
+      if (message.date && message.date * 1000 < cutoff) break; // newest-first, rest are older
+      if (!message.message && !message.media) continue;
+      await processMessage(client, message, false, { username: entry.username, title: entry.title }, false);
+      count += 1;
+    }
+    console.log(`  @${label}: ${count} message(s)`);
+  } catch (err) {
+    console.warn(`  @${label}: stopped early after ${count} -`, err.message);
+  }
+  return count;
+}
+
 // On startup, load each monitored channel's recent history so the timeline
 // isn't empty until new messages happen to arrive - without this, the app
-// would only ever show messages sent after it started.
+// would only ever show messages sent after it started. Channels are
+// backfilled several at a time so a large account (dozens of channels)
+// fills in within a reasonable time instead of one channel at a time.
 async function backfillHistory(client, monitored) {
   if (config.backfillLimit <= 0) return;
 
   const cutoff = Date.now() - config.backfillHours * 60 * 60 * 1000;
+  const entries = Array.from(monitored.values());
   console.log(
-    `Backfilling up to ${config.backfillLimit} recent message(s) per channel (last ${config.backfillHours}h)...`
+    `Backfilling up to ${config.backfillLimit} recent message(s) per channel ` +
+      `(last ${config.backfillHours}h) across ${entries.length} channel(s), ` +
+      `${config.backfillConcurrency} at a time...`
   );
 
-  let total = 0;
-  for (const entry of monitored.values()) {
-    const label = entry.username || entry.title;
-    try {
-      const messages = await client.getMessages(entry.entity, { limit: config.backfillLimit });
-      for (const message of messages) {
-        if (message.date && message.date * 1000 < cutoff) break; // newest-first, rest are older
-        if (!message.message && !message.media) continue;
-        await processMessage(client, message, false, { username: entry.username, title: entry.title }, false);
-        total += 1;
-      }
-    } catch (err) {
-      console.warn(`Could not backfill @${label}:`, err.message);
-    }
-  }
+  const counts = await mapWithConcurrency(entries, config.backfillConcurrency, (entry) =>
+    backfillOneChannel(client, entry, cutoff)
+  );
 
-  console.log(`Backfill complete: ${total} message(s) loaded.`);
+  const total = counts.reduce((sum, n) => sum + n, 0);
+  console.log(`Backfill complete: ${total} message(s) loaded across ${entries.length} channel(s).`);
 }
 
 async function main() {

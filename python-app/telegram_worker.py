@@ -88,35 +88,52 @@ async def process_message(client, message, is_edit, known_source=None, notify=Tr
         print(f'Failed to process message: {err}')
 
 
+async def _backfill_one_channel(client, entry, cutoff):
+    label = entry['username'] or entry['title']
+    count = 0
+    try:
+        async for message in client.iter_messages(entry['entity'], limit=config.BACKFILL_LIMIT):
+            if message.date and message.date < cutoff:
+                break  # newest-first order, so everything after this is even older
+            if not message.message and not message.media:
+                continue
+            await process_message(
+                client, message, False,
+                known_source=(entry['username'], entry['title']),
+                notify=False,
+            )
+            count += 1
+    except Exception as err:
+        print(f'  @{label}: stopped early after {count} - {err}')
+    else:
+        print(f'  @{label}: {count} message(s)')
+    return count
+
+
 async def backfill_history(client, monitored):
     """On startup, load each monitored channel's recent history so the
     timeline isn't empty until new messages happen to arrive - without this,
-    the app would only ever show messages sent after it started."""
+    the app would only ever show messages sent after it started. Channels
+    are backfilled several at a time so a large account (dozens of channels)
+    fills in within a reasonable time instead of one channel at a time."""
     if config.BACKFILL_LIMIT <= 0:
         return
 
     cutoff = datetime.now(timezone.utc) - timedelta(hours=config.BACKFILL_HOURS)
-    print(f'Backfilling up to {config.BACKFILL_LIMIT} recent message(s) per channel (last {config.BACKFILL_HOURS}h)...')
+    print(
+        f'Backfilling up to {config.BACKFILL_LIMIT} recent message(s) per channel '
+        f'(last {config.BACKFILL_HOURS}h) across {len(monitored)} channel(s), '
+        f'{config.BACKFILL_CONCURRENCY} at a time...'
+    )
 
-    total = 0
-    for entry in monitored.values():
-        label = entry['username'] or entry['title']
-        try:
-            async for message in client.iter_messages(entry['entity'], limit=config.BACKFILL_LIMIT):
-                if message.date and message.date < cutoff:
-                    break  # newest-first order, so everything after this is even older
-                if not message.message and not message.media:
-                    continue
-                await process_message(
-                    client, message, False,
-                    known_source=(entry['username'], entry['title']),
-                    notify=False,
-                )
-                total += 1
-        except Exception as err:
-            print(f'Could not backfill @{label}: {err}')
+    semaphore = asyncio.Semaphore(config.BACKFILL_CONCURRENCY)
 
-    print(f'Backfill complete: {total} message(s) loaded.')
+    async def bounded(entry):
+        async with semaphore:
+            return await _backfill_one_channel(client, entry, cutoff)
+
+    counts = await asyncio.gather(*(bounded(entry) for entry in monitored.values()))
+    print(f'Backfill complete: {sum(counts)} message(s) loaded across {len(monitored)} channel(s).')
 
 
 async def _connect():

@@ -36,6 +36,9 @@ DEEPL_API_KEY = os.getenv('DEEPL_API_KEY', '')
 # disable and only show messages that arrive after the app starts.
 BACKFILL_LIMIT = int(os.getenv('BACKFILL_LIMIT', '15') or '0')
 BACKFILL_HOURS = int(os.getenv('BACKFILL_HOURS', '24') or '24')
+# How many channels to backfill at once - higher is faster for accounts with
+# many channels, but hits Telegram/translation APIs harder in parallel.
+BACKFILL_CONCURRENCY = int(os.getenv('BACKFILL_CONCURRENCY', '8') or '8')
 
 GAZETTEER_FILE = ROOT / 'shared' / 'gazetteer.json'
 
